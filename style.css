@@ -864,3 +864,58 @@ body {
     padding: 40px 30px;
   }
 }
+/* Строгий логотип-щит */
+.logo-icon-shield {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 20px;
+  background: linear-gradient(135deg, var(--neon-blue), var(--neon-purple));
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
+  animation: pulse 3s infinite ease-in-out;
+}
+
+/* Переключатель между входом и регистрацией */
+.auth-switch {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.auth-switch a {
+  color: var(--neon-blue);
+  text-decoration: none;
+  margin-left: 5px;
+  font-weight: 500;
+  transition: all 0.3s;
+}
+.auth-switch a:hover {
+  color: var(--neon-purple);
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+}
+
+/* Поля для ввода СМС кода */
+.sms-inputs {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.sms-box {
+  width: 60px;
+  height: 70px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--glass-border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 28px;
+  font-family: 'Orbitron', sans-serif;
+  text-align: center;
+  outline: none;
+  transition: all 0.3s;
+}
+.sms-box:focus {
+  border-color: var(--neon-blue);
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
+  transform: translateY(-2px);
+}
