@@ -1,16 +1,15 @@
-// ==========================================
-//  LIME MESSAGE CORE v1.0
-// ==========================================
-
 class LimeMessageCore {
     constructor() {
         this.db = null;
+        this.auth = null;
         this.currentUser = null;
         this.currentChatId = 'general';
         this.blockedUsers = [];
         this.replyTo = null;
         this.msgListener = null;
         this.callListener = null;
+        this.recaptchaVerifier = null;
+        this.confirmationResult = null;
         
         this.localStream = null;
         this.peerConnection = null;
@@ -20,14 +19,9 @@ class LimeMessageCore {
         this.ICE_SERVERS = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
         this.events = {
-            onAuth: null,
-            onLogout: null,
-            onChatsLoaded: null,
-            onMessage: null,
-            onCall: null,
-            onNotification: null,
-            onTerminal: null,
-            onTerminalClear: null
+            onAuth: null, onLogout: null, onChatsLoaded: null,
+            onMessage: null, onCall: null, onNotification: null,
+            onTerminal: null, onTerminalClear: null
         };
 
         this.ENCODED_USERS = [
@@ -54,6 +48,7 @@ class LimeMessageCore {
     init() {
         if (!firebase.apps.length) firebase.initializeApp(this.firebaseConfig);
         this.db = firebase.database();
+        this.auth = firebase.auth();
         this._initDB();
         this.checkSavedSession();
     }
@@ -122,6 +117,59 @@ class LimeMessageCore {
         return res;
     }
 
+    // ===== FIREBASE PHONE AUTH =====
+    async sendSmsCode(phoneNumber) {
+        if (this.recaptchaVerifier) this.recaptchaVerifier.clear();
+        
+        this.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+            size: 'invisible',
+            callback: () => {}
+        });
+
+        try {
+            this.confirmationResult = await this.auth.signInWithPhoneNumber(phoneNumber, this.recaptchaVerifier);
+            return { success: true };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async verifySmsCode(code) {
+        if (!this.confirmationResult) return { success: false, error: 'No SMS sent' };
+
+        try {
+            const result = await this.confirmationResult.confirm(code);
+            const phone = result.user.phoneNumber;
+            const snap = await this.db.ref('users/' + phone).once('value');
+            
+            if (!snap.exists()) {
+                await this.db.ref('users/' + phone).set({
+                    password: this.encrypt(phone),
+                    role: 'user',
+                    displayName: 'User_' + phone.slice(-4),
+                    phone: phone,
+                    created: Date.now(),
+                    uid: result.user.uid
+                });
+            }
+
+            return { success: true, user: { login: phone, role: 'user', name: 'User_' + phone.slice(-4) } };
+        } catch (error) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    async loginWithPhone(phone) {
+        const snap = await this.db.ref('users/' + phone).once('value');
+        if (!snap.exists()) throw new Error('User not found');
+        
+        this.currentUser = { login: phone, role: snap.val().role, name: snap.val().displayName || phone };
+        localStorage.setItem('lime_user', JSON.stringify(this.currentUser));
+        this._startApp();
+        if (this.events.onAuth) this.events.onAuth(this.currentUser);
+    }
+
+    // ===== ОБЫЧНЫЙ ВХОД =====
     async login(l, p) {
         if (!l || !p) throw new Error('Введите данные');
         const snap = await this.db.ref('users/' + l).once('value');
@@ -174,8 +222,7 @@ class LimeMessageCore {
         if ("Notification" in window && Notification.permission === "granted") {
             const preview = text.length > 15 ? text.substring(0, 15) + '...' : text;
             const roleTag = role && role !== 'user' ? ` (${role})` : '';
-            const title = `${author}${roleTag}`;
-            if (this.events.onNotification) this.events.onNotification(title, preview);
+            if (this.events.onNotification) this.events.onNotification(`${author}${roleTag}`, preview);
         }
     }
 
@@ -209,7 +256,6 @@ class LimeMessageCore {
 
     loadMessages(chatId) {
         if (this.msgListener) this.db.ref('messages/' + this.currentChatId).off('child_added', this.msgListener);
-        
         this.msgListener = this.db.ref('messages/' + chatId).limitToLast(60).on('child_added', snap => {
             const data = snap.val();
             if (this.blockedUsers.includes(data.author)) return;
@@ -241,13 +287,8 @@ class LimeMessageCore {
         this.db.ref('messages/' + this.currentChatId).push(messageData);
     }
 
-    setReply(msgKey, author, text) {
-        this.replyTo = { key: msgKey, author, text };
-    }
-
-    cancelReply() {
-        this.replyTo = null;
-    }
+    setReply(msgKey, author, text) { this.replyTo = { key: msgKey, author, text }; }
+    cancelReply() { this.replyTo = null; }
 
     deleteMsg(chatId, key) { 
         if (this.currentUser.role !== 'admin' && this.currentUser.role !== 'root') return; 
@@ -289,27 +330,15 @@ class LimeMessageCore {
             this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             this.peerConnection = new RTCPeerConnection(this.ICE_SERVERS);
             this.localStream.getTracks().forEach(t => this.peerConnection.addTrack(t, this.localStream));
-            
-            this.peerConnection.ontrack = e => { 
-                if (this.events.onCall) this.events.onCall({ stream: e.streams[0] }, 'remote_stream'); 
-                this._startCallTimer();
-            };
-            
-            this.peerConnection.onicecandidate = e => { 
-                if (e.candidate) this.db.ref('calls/active/' + this.callId + '/candidates').push(this.encrypt(JSON.stringify(e.candidate.toJSON()))); 
-            };
-            
+            this.peerConnection.ontrack = e => { if (this.events.onCall) this.events.onCall({ stream: e.streams[0] }, 'remote_stream'); this._startCallTimer(); };
+            this.peerConnection.onicecandidate = e => { if (e.candidate) this.db.ref('calls/active/' + this.callId + '/candidates').push(this.encrypt(JSON.stringify(e.candidate.toJSON()))); };
             const offer = await this.peerConnection.createOffer();
             await this.peerConnection.setLocalDescription(offer);
             this.callId = this.db.ref('calls').push().key;
             const activeId = this.db.ref('calls/active').push().key;
-            
             this.db.ref('calls/' + this.callId).set({ from: this.currentUser.login, to: target, status: 'offering', activeRef: activeId });
             this.db.ref('calls/active/' + activeId).set({ type: 'offer', sdp: this.encrypt(offer.sdp), caller: this.currentUser.login });
-            
-            this.db.ref('calls/' + this.callId + '/status').on('value', snap => {
-                if (snap.val() === 'ended' || snap.val() === 'rejected') this.endCall();
-            });
+            this.db.ref('calls/' + this.callId + '/status').on('value', snap => { if (snap.val() === 'ended' || snap.val() === 'rejected') this.endCall(); });
         } catch (err) { console.error('Микрофон: ' + err.message); }
     }
 
@@ -318,33 +347,19 @@ class LimeMessageCore {
             this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
             this.peerConnection = new RTCPeerConnection(this.ICE_SERVERS);
             this.localStream.getTracks().forEach(t => this.peerConnection.addTrack(t, this.localStream));
-            
-            this.peerConnection.ontrack = e => { 
-                if (this.events.onCall) this.events.onCall({ stream: e.streams[0] }, 'remote_stream'); 
-                this._startCallTimer();
-            };
-            
-            this.peerConnection.onicecandidate = e => { 
-                if (e.candidate) this.db.ref('calls/active/' + data.activeRef + '/candidates').push(this.encrypt(JSON.stringify(e.candidate.toJSON()))); 
-            };
-            
+            this.peerConnection.ontrack = e => { if (this.events.onCall) this.events.onCall({ stream: e.streams[0] }, 'remote_stream'); this._startCallTimer(); };
+            this.peerConnection.onicecandidate = e => { if (e.candidate) this.db.ref('calls/active/' + data.activeRef + '/candidates').push(this.encrypt(JSON.stringify(e.candidate.toJSON()))); };
             const offerSdp = await this.db.ref('calls/active/' + data.activeRef + '/sdp').once('value').then(s => this.decrypt(s.val()));
             await this.peerConnection.setRemoteDescription({ type: 'offer', sdp: offerSdp });
             const answer = await this.peerConnection.createAnswer();
             await this.peerConnection.setLocalDescription(answer);
-            
             this.db.ref('calls/active/' + data.activeRef).update({ answerSdp: this.encrypt(answer.sdp) });
             this.db.ref('calls/' + callId).update({ status: 'answered' });
-            
-            this.db.ref('calls/' + callId + '/status').on('value', snap => {
-                if (snap.val() === 'ended' || snap.val() === 'rejected') this.endCall();
-            });
+            this.db.ref('calls/' + callId + '/status').on('value', snap => { if (snap.val() === 'ended' || snap.val() === 'rejected') this.endCall(); });
         } catch (err) { console.error('Ошибка звонка: ' + err.message); }
     }
 
-    rejectCall(callId) {
-        this.db.ref('calls/' + callId).update({ status: 'rejected' });
-    }
+    rejectCall(callId) { this.db.ref('calls/' + callId).update({ status: 'rejected' }); }
 
     endCall() {
         if (this.localStream) this.localStream.getTracks().forEach(t => t.stop());
@@ -384,26 +399,25 @@ class TerminalProcessor {
     }
 
     log(text, color = '#10b981') {
-        if (this.core.events.onTerminal) {
-            this.core.events.onTerminal(text, color);
-        }
+        if (this.core.events.onTerminal) this.core.events.onTerminal(text, color);
     }
 
     execute(cmdString) {
         const parts = cmdString.split(/\s+/);
         const c = parts[0].toLowerCase();
         const args = parts.slice(1);
-        
         this.log(`root@lime:~# ${cmdString}`, '#10b981');
 
         switch(c) {
             case 'help':
             case '?':
-                this.log("\n=== 📚 LIME TERMINAL COMMANDS ===", '#10b981');
+                this.log("\n=== LIME TERMINAL COMMANDS ===", '#10b981');
                 this.log("  help          - Show this help", '#a0a0b0');
                 this.log("  status        - System status", '#a0a0b0');
                 this.log("  listusers     - List all users", '#a0a0b0');
                 this.log("  listchats     - List all chats", '#a0a0b0');
+                this.log("  useradd <login> <pass> [role] - Add user", '#a0a0b0');
+                this.log("  usermod <login> <role>        - Change role", '#a0a0b0');
                 this.log("  nuke          - Delete all messages", '#a0a0b0');
                 this.log("  clear         - Clear terminal", '#a0a0b0');
                 this.log("  exit          - Logout", '#a0a0b0');
@@ -431,8 +445,29 @@ class TerminalProcessor {
                 });
                 break;
 
+            case 'useradd': {
+                if (args.length < 2) return this.log("Usage: useradd <login> <pass> [role]", '#ec4899');
+                const [login, pass, role = 'user'] = args;
+                this.core.db.ref('users/' + login).set({
+                    password: this.core.encrypt(pass),
+                    role: role,
+                    displayName: login,
+                    created: Date.now()
+                }).then(() => this.log(`✅ User '${login}' created with role '${role}'`, '#10b981'));
+                break;
+            }
+
+            case 'usermod': {
+                if (args.length < 2) return this.log("Usage: usermod <login> <role>", '#ec4899');
+                const [login, role] = args;
+                if (!['root', 'admin', 'user'].includes(role)) return this.log("Role must be: root/admin/user", '#ec4899');
+                this.core.db.ref('users/' + login + '/role').set(role)
+                    .then(() => this.log(`✅ Role of '${login}' set to '${role}'`, '#10b981'));
+                break;
+            }
+
             case 'nuke':
-                if (confirm('️ DELETE ALL MESSAGES?')) {
+                if (confirm('⚠️ DELETE ALL MESSAGES?')) {
                     this.core.db.ref('messages').remove().then(() => this.log('💥 ALL DESTROYED', '#ec4899'));
                 }
                 break;
