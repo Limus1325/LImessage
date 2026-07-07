@@ -19,8 +19,6 @@
     <!-- Экран авторизации -->
     <div class="auth-screen" id="auth-screen">
       <div class="auth-glass">
-        
-        <!-- Логотип (строгий, без лайма) -->
         <div class="auth-logo">
           <div class="logo-icon-shield"></div>
           <h1 class="logo-text">SECURE ACCESS</h1>
@@ -90,9 +88,11 @@
           <span class="encryption-badge">AES-256-GCM</span>
         </div>
       </div>
+      <!-- Невидимый reCAPTCHA для Phone Auth -->
+      <div id="recaptcha-container"></div>
     </div>
 
-    <!-- Главный интерфейс (остается без изменений) -->
+    <!-- Главный интерфейс -->
     <div class="main-interface" id="main-interface" style="display:none;">
       <aside class="sidebar glass-panel">
         <div class="sidebar-header">
@@ -103,11 +103,11 @@
               <div class="user-role" id="user-role">user</div>
             </div>
           </div>
-          <button class="icon-btn" id="btn-logout" title="Logout"></button>
+          <button class="icon-btn" id="btn-logout" title="Logout">🚪</button>
         </div>
         <div class="sidebar-search">
           <input type="text" class="search-input" placeholder="Search chats...">
-          <button class="icon-btn"></button>
+          <button class="icon-btn">🔍</button>
         </div>
         <div class="chats-header">
           <h3>CONVERSATIONS</h3>
@@ -199,8 +199,11 @@
     </div>
   </div>
 
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  
   <script src="core.js"></script>
   <script src="ui.js"></script>
 </body>
