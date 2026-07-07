@@ -34,14 +34,16 @@ class LimeMessageCore {
             { l: '0JDQvNC40YDQvtGA0L3QuNC5', p: 'ODgwMDM1NTM1', r: 'user', n: 'ОБСОС' }
         ];
 
+        // ✅ ТВОЯ КОНФИГУРАЦИЯ FIREBASE
         this.firebaseConfig = {
-            apiKey: "AIzaSyCCTgHTXjKC3Q0x3YRZtR6cikE-p2FoQ_0",
-            authDomain: "shpak-message.firebaseapp.com",
-            databaseURL: "https://shpak-message-default-rtdb.firebaseio.com",
-            projectId: "shpak-message",
-            storageBucket: "shpak-message.firebasestorage.app",
-            messagingSenderId: "302522413165",
-            appId: "1:302522413165:web:cbd2d65395c58289680f64"
+            apiKey: "AIzaSyDvTqTH65dIuFEqJEFoKLMLKaKMVwMQ95s",
+            authDomain: "limessage-c6259.firebaseapp.com",
+            databaseURL: "https://limessage-c6259-default-rtdb.firebaseio.com",
+            projectId: "limessage-c6259",
+            storageBucket: "limessage-c6259.firebasestorage.app",
+            messagingSenderId: "520598610250",
+            appId: "1:520598610250:web:c9abb38454c0001e44e1b3",
+            measurementId: "G-YJDTHHN4HB"
         };
     }
 
