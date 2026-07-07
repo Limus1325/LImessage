@@ -3,13 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lime Message</title>
+  <title>Secure Access</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'></text></svg>">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <!-- Фоновые эффекты -->
   <div class="bg-effects">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
@@ -18,44 +16,84 @@
   </div>
 
   <div class="app-container">
-    <!-- Экран входа -->
+    <!-- Экран авторизации -->
     <div class="auth-screen" id="auth-screen">
       <div class="auth-glass">
+        
+        <!-- Логотип (строгий, без лайма) -->
         <div class="auth-logo">
-          <div class="logo-icon">🍋</div>
-          <h1 class="logo-text">LIME MESSAGE</h1>
-          <p class="logo-subtitle">Quantum Encrypted Protocol</p>
+          <div class="logo-icon-shield"></div>
+          <h1 class="logo-text">SECURE ACCESS</h1>
+          <p class="logo-subtitle">QUANTUM ENCRYPTED PROTOCOL</p>
         </div>
         
-        <div class="auth-form">
+        <!-- Шаг 1: Вход -->
+        <div class="auth-form" id="step-login">
           <div class="input-group">
             <label class="input-label">IDENTITY</label>
             <input type="text" id="login" class="neon-input" placeholder="Enter login">
           </div>
-          
           <div class="input-group">
             <label class="input-label">ACCESS KEY</label>
             <input type="password" id="pass" class="neon-input" placeholder="Enter password">
           </div>
-          
           <button id="btn-enter" class="neon-btn primary">
             <span class="btn-text">AUTHENTICATE</span>
             <span class="btn-glow"></span>
           </button>
-          
+          <div class="auth-switch">
+            <span>No account?</span>
+            <a href="#" id="link-to-phone">Register via Phone</a>
+          </div>
           <div class="auth-status" id="auth-status"></div>
         </div>
-        
+
+        <!-- Шаг 2: Ввод телефона -->
+        <div class="auth-form" id="step-phone" style="display:none;">
+          <div class="input-group">
+            <label class="input-label">PHONE NUMBER</label>
+            <input type="tel" id="reg-phone" class="neon-input" placeholder="+7 (999) 000-00-00">
+          </div>
+          <button id="btn-send-sms" class="neon-btn primary">
+            <span class="btn-text">SEND SMS CODE</span>
+            <span class="btn-glow"></span>
+          </button>
+          <div class="auth-switch">
+            <a href="#" id="link-to-login">Back to Login</a>
+          </div>
+          <div class="auth-status" id="phone-status"></div>
+        </div>
+
+        <!-- Шаг 3: Ввод СМС кода -->
+        <div class="auth-form" id="step-sms" style="display:none;">
+          <div class="input-group">
+            <label class="input-label">ENTER 4-DIGIT CODE</label>
+            <div class="sms-inputs">
+              <input type="text" class="sms-box" maxlength="1" data-index="0">
+              <input type="text" class="sms-box" maxlength="1" data-index="1">
+              <input type="text" class="sms-box" maxlength="1" data-index="2">
+              <input type="text" class="sms-box" maxlength="1" data-index="3">
+            </div>
+          </div>
+          <button id="btn-verify-sms" class="neon-btn primary">
+            <span class="btn-text">VERIFY & CREATE</span>
+            <span class="btn-glow"></span>
+          </button>
+          <div class="auth-switch">
+            <a href="#" id="link-resend-sms">Resend Code</a>
+          </div>
+          <div class="auth-status" id="sms-status"></div>
+        </div>
+
         <div class="auth-footer">
           <span class="version">v1.0.0</span>
-          <span class="encryption-badge"> AES-256-GCM</span>
+          <span class="encryption-badge">AES-256-GCM</span>
         </div>
       </div>
     </div>
 
-    <!-- Главный интерфейс -->
+    <!-- Главный интерфейс (остается без изменений) -->
     <div class="main-interface" id="main-interface" style="display:none;">
-      <!-- Сайдбар -->
       <aside class="sidebar glass-panel">
         <div class="sidebar-header">
           <div class="user-profile">
@@ -65,28 +103,23 @@
               <div class="user-role" id="user-role">user</div>
             </div>
           </div>
-          <button class="icon-btn" id="btn-logout" title="Logout">🚪</button>
+          <button class="icon-btn" id="btn-logout" title="Logout"></button>
         </div>
-
         <div class="sidebar-search">
           <input type="text" class="search-input" placeholder="Search chats...">
-          <button class="icon-btn">🔍</button>
+          <button class="icon-btn"></button>
         </div>
-
         <div class="chats-header">
           <h3>CONVERSATIONS</h3>
           <button class="icon-btn" id="btn-new-chat" title="New chat">+</button>
         </div>
-
         <div class="chat-list" id="chat-list"></div>
-
         <div class="sidebar-footer">
           <button class="icon-btn terminal-btn" id="btn-terminal" title="Terminal">⌨️</button>
           <button class="icon-btn" id="btn-settings" title="Settings">⚙️</button>
         </div>
       </aside>
 
-      <!-- Область чата -->
       <main class="chat-area">
         <div class="chat-header glass-panel">
           <div class="chat-info">
@@ -102,14 +135,12 @@
             <button class="icon-btn" id="btn-menu" title="Menu">⋮</button>
           </div>
         </div>
-
         <div class="messages-container" id="messages">
           <div class="empty-state">
             <div class="empty-icon"></div>
             <p>Select a conversation to start messaging</p>
           </div>
         </div>
-
         <div class="message-input-container glass-panel">
           <button class="icon-btn attach-btn">📎</button>
           <input type="text" id="msg-input" class="message-input" placeholder="Type a message...">
@@ -128,7 +159,7 @@
     <div class="terminal-overlay" id="terminal-overlay" style="display:none;">
       <div class="terminal-glass">
         <div class="terminal-header">
-          <span class="terminal-title">️ LIME TERMINAL</span>
+          <span class="terminal-title">LIME TERMINAL</span>
           <button class="icon-btn close-terminal">✕</button>
         </div>
         <div class="terminal-output" id="terminal-output"></div>
@@ -155,7 +186,7 @@
     <!-- Уведомление о звонке -->
     <div class="call-toast" id="call-toast" style="display:none;">
       <div class="call-toast-content">
-        <div class="call-icon"></div>
+        <div class="call-icon">📞</div>
         <div class="call-info">
           <h3>Incoming Call</h3>
           <p id="caller-name">Unknown</p>
@@ -168,11 +199,8 @@
     </div>
   </div>
 
-  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-  
-  <!-- App -->
   <script src="core.js"></script>
   <script src="ui.js"></script>
 </body>
