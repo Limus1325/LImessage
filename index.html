@@ -1,1 +1,179 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lime Message</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'></text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Фоновые эффекты -->
+  <div class="bg-effects">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+    <div class="grid-overlay"></div>
+  </div>
 
+  <div class="app-container">
+    <!-- Экран входа -->
+    <div class="auth-screen" id="auth-screen">
+      <div class="auth-glass">
+        <div class="auth-logo">
+          <div class="logo-icon">🍋</div>
+          <h1 class="logo-text">LIME MESSAGE</h1>
+          <p class="logo-subtitle">Quantum Encrypted Protocol</p>
+        </div>
+        
+        <div class="auth-form">
+          <div class="input-group">
+            <label class="input-label">IDENTITY</label>
+            <input type="text" id="login" class="neon-input" placeholder="Enter login">
+          </div>
+          
+          <div class="input-group">
+            <label class="input-label">ACCESS KEY</label>
+            <input type="password" id="pass" class="neon-input" placeholder="Enter password">
+          </div>
+          
+          <button id="btn-enter" class="neon-btn primary">
+            <span class="btn-text">AUTHENTICATE</span>
+            <span class="btn-glow"></span>
+          </button>
+          
+          <div class="auth-status" id="auth-status"></div>
+        </div>
+        
+        <div class="auth-footer">
+          <span class="version">v1.0.0</span>
+          <span class="encryption-badge"> AES-256-GCM</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Главный интерфейс -->
+    <div class="main-interface" id="main-interface" style="display:none;">
+      <!-- Сайдбар -->
+      <aside class="sidebar glass-panel">
+        <div class="sidebar-header">
+          <div class="user-profile">
+            <div class="avatar" id="user-avatar"></div>
+            <div class="user-info">
+              <div class="user-name" id="user-name">Loading...</div>
+              <div class="user-role" id="user-role">user</div>
+            </div>
+          </div>
+          <button class="icon-btn" id="btn-logout" title="Logout">🚪</button>
+        </div>
+
+        <div class="sidebar-search">
+          <input type="text" class="search-input" placeholder="Search chats...">
+          <button class="icon-btn">🔍</button>
+        </div>
+
+        <div class="chats-header">
+          <h3>CONVERSATIONS</h3>
+          <button class="icon-btn" id="btn-new-chat" title="New chat">+</button>
+        </div>
+
+        <div class="chat-list" id="chat-list"></div>
+
+        <div class="sidebar-footer">
+          <button class="icon-btn terminal-btn" id="btn-terminal" title="Terminal">⌨️</button>
+          <button class="icon-btn" id="btn-settings" title="Settings">⚙️</button>
+        </div>
+      </aside>
+
+      <!-- Область чата -->
+      <main class="chat-area">
+        <div class="chat-header glass-panel">
+          <div class="chat-info">
+            <div class="chat-avatar">💬</div>
+            <div class="chat-details">
+              <h2 id="chat-name">Select a chat</h2>
+              <span class="chat-status">● online</span>
+            </div>
+          </div>
+          <div class="chat-actions">
+            <button class="icon-btn" id="btn-call" title="Call">📞</button>
+            <button class="icon-btn" id="btn-search" title="Search">🔍</button>
+            <button class="icon-btn" id="btn-menu" title="Menu">⋮</button>
+          </div>
+        </div>
+
+        <div class="messages-container" id="messages">
+          <div class="empty-state">
+            <div class="empty-icon"></div>
+            <p>Select a conversation to start messaging</p>
+          </div>
+        </div>
+
+        <div class="message-input-container glass-panel">
+          <button class="icon-btn attach-btn">📎</button>
+          <input type="text" id="msg-input" class="message-input" placeholder="Type a message...">
+          <button class="icon-btn emoji-btn">😊</button>
+          <button id="btn-send" class="send-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <!-- Терминал -->
+    <div class="terminal-overlay" id="terminal-overlay" style="display:none;">
+      <div class="terminal-glass">
+        <div class="terminal-header">
+          <span class="terminal-title">️ LIME TERMINAL</span>
+          <button class="icon-btn close-terminal">✕</button>
+        </div>
+        <div class="terminal-output" id="terminal-output"></div>
+        <div class="terminal-input-line">
+          <span class="terminal-prompt">root@lime:~#</span>
+          <input type="text" id="terminal-input" class="terminal-input" autocomplete="off" spellcheck="false">
+        </div>
+      </div>
+    </div>
+
+    <!-- Модалка нового чата -->
+    <div class="modal-overlay" id="new-chat-modal" style="display:none;">
+      <div class="modal-glass">
+        <h2>Create New Chat</h2>
+        <input type="text" id="new-chat-name" class="neon-input" placeholder="Chat name">
+        <div class="user-list" id="user-list"></div>
+        <div class="modal-actions">
+          <button class="neon-btn secondary" id="btn-cancel-chat">Cancel</button>
+          <button class="neon-btn primary" id="btn-create-chat">Create</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Уведомление о звонке -->
+    <div class="call-toast" id="call-toast" style="display:none;">
+      <div class="call-toast-content">
+        <div class="call-icon"></div>
+        <div class="call-info">
+          <h3>Incoming Call</h3>
+          <p id="caller-name">Unknown</p>
+        </div>
+        <div class="call-actions">
+          <button class="call-btn accept" id="btn-accept-call">✓</button>
+          <button class="call-btn reject" id="btn-reject-call">✕</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+  
+  <!-- App -->
+  <script src="core.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>
