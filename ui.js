@@ -7,8 +7,7 @@ const terminalOverlay = document.getElementById('terminal-overlay');
 const newChatModal = document.getElementById('new-chat-modal');
 const callToast = document.getElementById('call-toast');
 
-// Состояние регистрации
-let regState = { phone: '', generatedCode: '' };
+let regState = { phone: '' };
 
 document.addEventListener('DOMContentLoaded', () => {
     core.init();
@@ -17,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function setupEventListeners() {
-    // Переключение экранов авторизации
+    // Переключение экранов
     document.getElementById('link-to-phone').addEventListener('click', (e) => {
         e.preventDefault();
         document.getElementById('step-login').style.display = 'none';
@@ -37,10 +36,8 @@ function setupEventListeners() {
     document.getElementById('btn-enter').addEventListener('click', handleLogin);
     document.getElementById('pass').addEventListener('keypress', e => { if (e.key === 'Enter') handleLogin(); });
 
-    // Отправка СМС
+    // СМС
     document.getElementById('btn-send-sms').addEventListener('click', sendSmsCode);
-
-    // Подтверждение СМС
     document.getElementById('btn-verify-sms').addEventListener('click', verifySmsCode);
 
     // Выход
@@ -84,19 +81,14 @@ function setupEventListeners() {
     });
 }
 
-// Логика СМС полей (автофокус)
 function setupSmsInputs() {
     const boxes = document.querySelectorAll('.sms-box');
     boxes.forEach((box, index) => {
         box.addEventListener('input', (e) => {
-            if (e.target.value.length === 1 && index < boxes.length - 1) {
-                boxes[index + 1].focus();
-            }
+            if (e.target.value.length === 1 && index < boxes.length - 1) boxes[index + 1].focus();
         });
         box.addEventListener('keydown', (e) => {
-            if (e.key === 'Backspace' && e.target.value === '' && index > 0) {
-                boxes[index - 1].focus();
-            }
+            if (e.key === 'Backspace' && e.target.value === '' && index > 0) boxes[index - 1].focus();
         });
     });
 }
@@ -115,10 +107,15 @@ async function handleLogin() {
     }
 }
 
-function sendSmsCode() {
-    const phone = document.getElementById('reg-phone').value.trim();
+async function sendSmsCode() {
+    const phoneInput = document.getElementById('reg-phone').value.trim();
     const status = document.getElementById('phone-status');
-    if (!phone || phone.length < 5) {
+    
+    let phone = phoneInput.replace(/\s+/g, '').replace(/[-()]/g, '');
+    if (phone.startsWith('8')) phone = '+7' + phone.slice(1);
+    if (!phone.startsWith('+')) phone = '+' + phone;
+    
+    if (phone.length < 10) {
         status.textContent = 'Invalid phone number';
         status.style.color = '#ec4899';
         return;
@@ -127,47 +124,45 @@ function sendSmsCode() {
     status.textContent = 'Sending SMS...';
     status.style.color = '#00d4ff';
 
-    // Генерируем случайный 4-значный код
-    const code = Math.floor(1000 + Math.random() * 9000).toString();
-    regState.phone = phone;
-    regState.generatedCode = code;
-
-    setTimeout(() => {
+    const result = await core.sendSmsCode(phone);
+    
+    if (result.success) {
+        regState.phone = phone;
         status.textContent = 'Code sent!';
         setTimeout(() => {
             document.getElementById('step-phone').style.display = 'none';
             document.getElementById('step-sms').style.display = 'flex';
             document.querySelector('.sms-box').focus();
-            
-            // ⚠️ СИМУЛЯЦИЯ СМС: В реальности здесь должен быть запрос к API (SMS.ru / Twilio)
-            // Для теста показываем код в статусе
-            document.getElementById('sms-status').textContent = `[TEST MODE] Your code: ${code}`;
+            document.getElementById('sms-status').textContent = 'Enter the code from SMS';
             document.getElementById('sms-status').style.color = '#10b981';
         }, 800);
-    }, 1500);
+    } else {
+        status.textContent = 'Error: ' + result.error;
+        status.style.color = '#ec4899';
+    }
 }
 
-function verifySmsCode() {
+async function verifySmsCode() {
     const boxes = document.querySelectorAll('.sms-box');
     let enteredCode = '';
     boxes.forEach(b => enteredCode += b.value);
     const status = document.getElementById('sms-status');
 
-    if (enteredCode === regState.generatedCode) {
-        status.textContent = 'Verified! Creating account...';
+    if (enteredCode.length < 4) {
+        status.textContent = 'Enter full code';
+        status.style.color = '#ec4899';
+        return;
+    }
+
+    status.textContent = 'Verifying...';
+    status.style.color = '#00d4ff';
+
+    const result = await core.verifySmsCode(enteredCode);
+    
+    if (result.success) {
+        status.textContent = 'Success!';
         status.style.color = '#10b981';
-        
-        // Создаем пользователя в БД (логин = телефон, пароль = код)
-        // В реальности тут должен быть запрос к твоему бэкенду для создания юзера
-        core.db.ref('users/' + regState.phone).set({
-            password: core.encrypt(enteredCode),
-            role: 'user',
-            displayName: 'User_' + regState.phone.slice(-4),
-            phone: regState.phone,
-            created: Date.now()
-        }).then(() => {
-            core.login(regState.phone, enteredCode);
-        });
+        await core.loginWithPhone(result.user.login);
     } else {
         status.textContent = 'Invalid code';
         status.style.color = '#ec4899';
@@ -218,17 +213,18 @@ core.events.onAuth = (user) => {
     document.getElementById('user-role').textContent = user.role;
     document.getElementById('user-avatar').textContent = user.name[0].toUpperCase();
 };
+
 core.events.onLogout = () => {
     authScreen.style.display = 'flex';
     mainInterface.style.display = 'none';
     document.getElementById('login').value = '';
     document.getElementById('pass').value = '';
     document.getElementById('auth-status').textContent = '';
-    // Сброс шагов
     document.getElementById('step-login').style.display = 'flex';
     document.getElementById('step-phone').style.display = 'none';
     document.getElementById('step-sms').style.display = 'none';
 };
+
 core.events.onChatsLoaded = (chats) => {
     const chatList = document.getElementById('chat-list');
     chatList.innerHTML = '';
@@ -240,6 +236,7 @@ core.events.onChatsLoaded = (chats) => {
         chatList.appendChild(div);
     });
 };
+
 core.events.onMessage = (msg, chatId) => {
     const container = document.getElementById('messages');
     const emptyState = container.querySelector('.empty-state');
@@ -255,10 +252,12 @@ core.events.onMessage = (msg, chatId) => {
     const lastEl = document.getElementById('last-' + chatId);
     if (lastEl) lastEl.textContent = msg.author + ': ' + (msg.type === 'text' ? core.decrypt(msg.text).substring(0, 20) : '📷 Photo');
 };
+
 core.events.onCall = (data, type) => {
     if (type === 'incoming') { window.pendingCallData = data; document.getElementById('caller-name').textContent = data.from; callToast.style.display = 'block'; } 
     else if (type === 'ended') { callToast.style.display = 'none'; }
 };
-core.events.onNotification = (title, body) => { if ("Notification" in window && Notification.permission === "granted") new Notification(title, { body, icon: '🛡️' }); };
+
+core.events.onNotification = (title, body) => { if ("Notification" in window && Notification.permission === "granted") new Notification(title, { body, icon: '️' }); };
 core.events.onTerminal = (text, color) => { const output = document.getElementById('terminal-output'); const div = document.createElement('div'); div.style.color = color; div.textContent = text; output.appendChild(div); output.scrollTop = output.scrollHeight; };
 core.events.onTerminalClear = () => { document.getElementById('terminal-output').innerHTML = ''; };
